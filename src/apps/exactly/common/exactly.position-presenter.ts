@@ -1,6 +1,8 @@
 import { PositionPresenterTemplate } from '~position/template/position-presenter.template';
 
-export abstract class ExactlyPositionPresenter extends PositionPresenterTemplate {
+import { ExactlyMarketProps } from './exactly.token-fetcher';
+
+export abstract class ExactlyPositionPresenter extends PositionPresenterTemplate<ExactlyMarketProps> {
   explorePresentationConfig = {
     tabs: [
       {
@@ -26,5 +28,6 @@ export abstract class ExactlyPositionPresenter extends PositionPresenterTemplate
         ],
       },
     ],
+    // tabs: [{ label: 'Markets', viewType: 'list' as const, groupIds: ['market'] }],
   };
 }

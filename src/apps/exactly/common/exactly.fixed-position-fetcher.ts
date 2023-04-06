@@ -9,8 +9,6 @@ import { ExactlyContractFactory, type Market } from '../contracts';
 import { ExactlyDefinitionsResolver, type ExactlyMarketDefinition } from './exactly.definitions-resolver';
 import { type ExactlyMarketProps, ExactlyTokenFetcher } from './exactly.token-fetcher';
 
-export type ExactlyFixedMarketProps = ExactlyMarketProps & { maturity: number };
-
 export abstract class ExactlyFixedPositionFetcher<
   V extends ExactlyMarketProps = ExactlyMarketProps,
 > extends ExactlyTokenFetcher<V> {

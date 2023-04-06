@@ -1,5 +1,3 @@
-import type { IMulticallWrapper } from '~multicall/multicall.interface';
-import type { AppTokenPosition } from '~position/position.interface';
 import type { GetDataPropsParams, GetTokenPropsParams } from '~position/template/app-token.template.types';
 
 import type { ExactlyMarketDefinition } from '../common/exactly.definitions-resolver';
@@ -9,34 +7,17 @@ import type { Market } from '../contracts';
 export abstract class ExactlyBorrowFetcher extends ExactlyTokenFetcher {
   groupLabel = 'Variable Borrow';
   isDebt = true;
+  tokenId = 2;
 
   getSupply({ definition }: GetTokenPropsParams<Market, ExactlyMarketProps, ExactlyMarketDefinition>) {
-    return Promise.resolve(definition.totalFloatingBorrowShares);
+    return Promise.resolve(definition.current.totalFloatingBorrowShares);
   }
 
   getTotalAssets({ definition }: GetTokenPropsParams<Market, ExactlyMarketProps, ExactlyMarketDefinition>) {
-    return definition.totalFloatingBorrowAssets;
+    return definition.current.totalFloatingBorrowAssets;
   }
 
   getApr({ definition }: GetDataPropsParams<Market, ExactlyMarketProps, ExactlyMarketDefinition>) {
-    return Number(definition.floatingBorrowRate) / 1e16;
-  }
-
-  async getBalancePerToken({
-    address,
-    appToken,
-    multicall,
-  }: {
-    address: string;
-    appToken: AppTokenPosition;
-    multicall: IMulticallWrapper;
-  }) {
-    const { floatingBorrowShares } = await this.definitionsResolver.getDefinition({
-      multicall,
-      network: this.network,
-      account: address,
-      market: appToken.address,
-    });
-    return floatingBorrowShares;
+    return Number(definition.current.floatingBorrowRate) / 1e16;
   }
 }

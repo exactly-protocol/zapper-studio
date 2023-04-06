@@ -126,7 +126,14 @@ export abstract class CustomContractPositionTemplatePositionFetcher<
     const skeletonsWithResolvedTokens = await Promise.all(
       compact(skeletons).map(async ({ address, tokenDefinitions, definition }) => {
         const maybeTokens = tokenDefinitions.map(v => {
-          const match = tokenDependencies.find(t => t.address === v.address);
+          const match = tokenDependencies.find(
+            t =>
+              t.address === v.address &&
+              t.network === v.network &&
+              (v.tokenId == null ||
+                (t.type === ContractType.APP_TOKEN && t.dataProps.tokenId === v.tokenId) ||
+                (t.type === ContractType.NON_FUNGIBLE_TOKEN && Number(t.assets?.[0].tokenId) === v.tokenId)),
+          );
           return match ? metatyped(match, v.metaType) : null;
         });
 

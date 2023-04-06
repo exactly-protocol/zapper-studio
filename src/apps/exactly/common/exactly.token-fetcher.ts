@@ -20,11 +20,16 @@ import { ExactlyContractFactory, type Market } from '../contracts';
 
 import { ExactlyDefinitionsResolver, type ExactlyMarketDefinition } from './exactly.definitions-resolver';
 
-export type ExactlyMarketProps = DefaultAppTokenDataProps & { apr: number };
+export type ExactlyMarketProps = DefaultAppTokenDataProps & { apr: number; tokenId: number };
 
 export abstract class ExactlyTokenFetcher<
   V extends ExactlyMarketProps = ExactlyMarketProps,
 > extends AppTokenTemplatePositionFetcher<Market, V, ExactlyMarketDefinition> {
+  abstract tokenId: number;
+  isExcludedFromBalances = true;
+  isExcludedFromExplore = true;
+  isExcludedFromTvl = true;
+
   constructor(
     @Inject(APP_TOOLKIT) protected readonly appToolkit: IAppToolkit,
     @Inject(ExactlyContractFactory) protected readonly contractFactory: ExactlyContractFactory,
@@ -46,24 +51,20 @@ export abstract class ExactlyTokenFetcher<
   }
 
   getUnderlyingTokenDefinitions({ definition }: GetUnderlyingTokensParams<Market, ExactlyMarketDefinition>) {
-    return Promise.resolve([{ address: definition.asset.toLowerCase(), network: this.network }]);
+    return Promise.resolve([{ address: definition.current.asset.toLowerCase(), network: this.network }]);
   }
 
   getSymbol({ definition }: GetTokenPropsParams<Market, V, ExactlyMarketDefinition>) {
-    return Promise.resolve(definition.symbol);
+    return Promise.resolve(definition.current.symbol);
   }
 
   getDecimals({ definition }: GetTokenPropsParams<Market, V, ExactlyMarketDefinition>) {
-    return Promise.resolve(definition.decimals);
+    return Promise.resolve(definition.current.decimals);
   }
 
   getLabel({ appToken }: GetDisplayPropsParams<Market, V, ExactlyMarketDefinition>) {
     const [underlyingToken] = appToken.tokens;
     return Promise.resolve(getLabelFromToken(underlyingToken));
-  }
-
-  getLabelDetailed({ appToken }: GetDisplayPropsParams<Market, V, ExactlyMarketDefinition>) {
-    return Promise.resolve(appToken.symbol);
   }
 
   getBalanceDisplayMode() {
@@ -76,18 +77,18 @@ export abstract class ExactlyTokenFetcher<
     return [Number(totalAssets.mul(constants.WeiPerEther).div(supply)) / 1e18];
   }
 
-  async getApy(params: GetDataPropsParams<Market, V, ExactlyMarketDefinition>) {
-    return ((1 + (await this.getApr(params)) / (100 * 31_536_000)) ** 31_536_000 - 1) * 100;
+  getApy(params: GetDataPropsParams<Market, V, ExactlyMarketDefinition>) {
+    return Promise.resolve(((1 + this.getApr(params) / (100 * 31_536_000)) ** 31_536_000 - 1) * 100);
   }
 
   async getDataProps(params: GetDataPropsParams<Market, V, ExactlyMarketDefinition>) {
     const [superProps, apr] = await Promise.all([super.getDataProps(params), this.getApr(params)]);
-    return { ...superProps, apr };
+    return { ...superProps, apr, tokenId: this.tokenId };
   }
 
   abstract getTotalAssets(_: GetTokenPropsParams<Market, V, ExactlyMarketDefinition>): BigNumber | Promise<BigNumber>;
 
-  getApr(_: GetDataPropsParams<Market, V, ExactlyMarketDefinition>): number | Promise<number> {
+  getApr(_: GetDataPropsParams<Market, V, ExactlyMarketDefinition>): number {
     return 0;
   }
 }

@@ -12,8 +12,11 @@ export const PREVIEWER_ADDRESSES = {
   [Network.OPTIMISM_MAINNET]: '0xb8b1f590272b541b263a49b28bf52f8774b0e6c9',
 } as Partial<Record<Network, string>>;
 
-export type ExactlyMarketDefinition = DefaultAppTokenDefinition &
-  Previewer.MarketAccountStructOutput & { blockNumber: number; timestamp: number };
+type ExactlyMarketState = Previewer.MarketAccountStructOutput & { blockNumber: number; timestamp: number };
+export type ExactlyMarketDefinition = DefaultAppTokenDefinition & {
+  current: ExactlyMarketState;
+  previous: ExactlyMarketState;
+};
 export type GetMarketDefinitionsParams = { network: Network; multicall: IMulticallWrapper; account?: string };
 
 @Injectable()
@@ -23,7 +26,7 @@ export class ExactlyDefinitionsResolver {
     if (!address) throw new Error(`missing previewer on ${network}`);
     const previewer = Previewer__factory.createInterface();
     const { address: multicallAddress, interface: multicallInterface } = multicall.contract;
-    const [block, [{ data: exactly }, { data: ts }]] = await multicall.wrap(multicall.contract).callStatic.aggregate(
+    const [block, [{ data }, { data: ts }]] = await multicall.wrap(multicall.contract).callStatic.aggregate(
       [
         { target: address, callData: previewer.encodeFunctionData('exactly', [account ?? constants.AddressZero]) },
         { target: multicallAddress, callData: multicallInterface.encodeFunctionData('getCurrentBlockTimestamp') },
@@ -31,11 +34,29 @@ export class ExactlyDefinitionsResolver {
       true,
     );
     const blockNumber = block.toNumber();
-    const timestamp = (
-      multicall.contract.interface.decodeFunctionResult('getCurrentBlockTimestamp', ts)[0] as BigNumber
-    ).toNumber();
-    return (previewer.decodeFunctionResult('exactly', exactly)[0] as Previewer.MarketAccountStructOutput[]).map(
-      m => ({ address: m.market.toLowerCase(), blockNumber, timestamp, ...m } as ExactlyMarketDefinition),
+    const [prevBlock, [{ data: prevData }, { data: prevTS }]] = await multicall
+      .wrap(multicall.contract)
+      .callStatic.aggregate(
+        [
+          { target: address, callData: previewer.encodeFunctionData('exactly', [account ?? constants.AddressZero]) },
+          { target: multicallAddress, callData: multicallInterface.encodeFunctionData('getCurrentBlockTimestamp') },
+        ],
+        true,
+        { blockTag: blockNumber - 123 },
+      );
+    const [timestamp, prevTimestamp] = [ts, prevTS].map(t =>
+      (multicall.contract.interface.decodeFunctionResult('getCurrentBlockTimestamp', t)[0] as BigNumber).toNumber(),
+    );
+    const [exactly, prevExactly] = [data, prevData].map(
+      d => previewer.decodeFunctionResult('exactly', d)[0] as Previewer.MarketAccountStructOutput[],
+    );
+    return exactly.map(
+      (m, i) =>
+        ({
+          address: m.market.toLowerCase(),
+          current: { blockNumber, timestamp, ...m },
+          previous: { blockNumber: prevBlock.toNumber(), timestamp: prevTimestamp, ...prevExactly[i] },
+        } as ExactlyMarketDefinition),
     );
   }
 
