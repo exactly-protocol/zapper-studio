@@ -10,7 +10,7 @@ import type { ExactlyMarketProps } from '../common/exactly.token-fetcher';
 import type { Market } from '../contracts';
 
 export abstract class ExactlyFixedBorrowFetcher extends ExactlyFixedPositionFetcher {
-  groupLabel = 'Variable Borrow';
+  groupLabel = 'Fixed Borrow';
   isDebt = true;
 
   getTotalAssets({ definition }: GetTokenPropsParams<Market, ExactlyMarketProps, ExactlyMarketDefinition>) {
